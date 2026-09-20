@@ -170,7 +170,8 @@ const downloadResume = async (req, res) => {
 
         res.status(200).json({
             success: true,
-            resumeURL: resume.resumeURL
+            resumeURL: resume.resumeURL,
+            fileName: resume.fileName
         });
 
     } catch (error) {
@@ -180,7 +181,6 @@ const downloadResume = async (req, res) => {
         });
     }
 };
-
 
 module.exports = {
     uploadResume,
