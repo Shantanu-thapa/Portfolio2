@@ -1,7 +1,9 @@
 const Resume = require("../model/resumeModel");
 const cloudinary = require("../config/cloudinary");
 
+// ==========================================
 // Upload Resume
+// ==========================================
 const uploadResume = async (req, res) => {
     try {
         if (!req.file) {
@@ -11,11 +13,14 @@ const uploadResume = async (req, res) => {
             });
         }
 
+        // Upload PDF to Cloudinary
         const result = await new Promise((resolve, reject) => {
             const stream = cloudinary.uploader.upload_stream(
                 {
                     folder: "portfolio/resume",
-                    resource_type: "raw"
+                    resource_type: "raw",
+                    use_filename: true,
+                    unique_filename: true
                 },
                 (error, result) => {
                     if (error) {
@@ -29,21 +34,25 @@ const uploadResume = async (req, res) => {
             stream.end(req.file.buffer);
         });
 
+        // Save resume information in MongoDB
         const resume = await Resume.create({
             resumeURL: result.secure_url,
             publicId: result.public_id,
             fileName: req.file.originalname,
-            isActive: true
+            isActive: true,
+            downloadCount: 0
         });
 
-        res.status(201).json({
+        return res.status(201).json({
             success: true,
             message: "Resume uploaded successfully",
             resume
         });
 
     } catch (error) {
-        res.status(500).json({
+        console.error("Upload Resume Error:", error);
+
+        return res.status(500).json({
             success: false,
             message: "Resume upload failed",
             error: error.message
@@ -52,7 +61,9 @@ const uploadResume = async (req, res) => {
 };
 
 
+// ==========================================
 // Get Active Resume
+// ==========================================
 const myResume = async (req, res) => {
     try {
         const resume = await Resume.findOne({
@@ -66,14 +77,16 @@ const myResume = async (req, res) => {
             });
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Resume found",
             resume
         });
 
     } catch (error) {
-        res.status(500).json({
+        console.error("Get Resume Error:", error);
+
+        return res.status(500).json({
             success: false,
             message: "Failed to fetch resume",
             error: error.message
@@ -82,7 +95,9 @@ const myResume = async (req, res) => {
 };
 
 
+// ==========================================
 // Update Resume
+// ==========================================
 const updateResume = async (req, res) => {
     try {
         if (!req.file) {
@@ -92,6 +107,7 @@ const updateResume = async (req, res) => {
             });
         }
 
+        // Find current active resume
         const oldResume = await Resume.findOne({
             isActive: true
         });
@@ -101,7 +117,9 @@ const updateResume = async (req, res) => {
             const stream = cloudinary.uploader.upload_stream(
                 {
                     folder: "portfolio/resume",
-                    resource_type: "raw"
+                    resource_type: "raw",
+                    use_filename: true,
+                    unique_filename: true
                 },
                 (error, result) => {
                     if (error) {
@@ -115,14 +133,21 @@ const updateResume = async (req, res) => {
             stream.end(req.file.buffer);
         });
 
-        // Delete old Cloudinary file
+        // Delete old Cloudinary resume
         if (oldResume) {
-            await cloudinary.uploader.destroy(
-                oldResume.publicId,
-                {
-                    resource_type: "raw"
-                }
-            );
+            try {
+                await cloudinary.uploader.destroy(
+                    oldResume.publicId,
+                    {
+                        resource_type: "raw"
+                    }
+                );
+            } catch (cloudinaryError) {
+                console.error(
+                    "Old Cloudinary file deletion failed:",
+                    cloudinaryError.message
+                );
+            }
 
             oldResume.isActive = false;
             await oldResume.save();
@@ -133,17 +158,20 @@ const updateResume = async (req, res) => {
             resumeURL: result.secure_url,
             publicId: result.public_id,
             fileName: req.file.originalname,
-            isActive: true
+            isActive: true,
+            downloadCount: 0
         });
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
             message: "Resume updated successfully",
             resume
         });
 
     } catch (error) {
-        res.status(500).json({
+        console.error("Update Resume Error:", error);
+
+        return res.status(500).json({
             success: false,
             message: "Resume update failed",
             error: error.message
@@ -151,12 +179,24 @@ const updateResume = async (req, res) => {
     }
 };
 
+
+// ==========================================
+// Download Resume
+// ==========================================
 const downloadResume = async (req, res) => {
     try {
         const resume = await Resume.findOneAndUpdate(
-            { isActive: true },
-            { $inc: { downloadCount: 1 } },
-            { new: true }
+            {
+                isActive: true
+            },
+            {
+                $inc: {
+                    downloadCount: 1
+                }
+            },
+            {
+                new: true
+            }
         );
 
         if (!resume) {
@@ -166,21 +206,33 @@ const downloadResume = async (req, res) => {
             });
         }
 
-        // Redirect directly to the resume file
+        if (!resume.resumeURL) {
+            return res.status(404).json({
+                success: false,
+                message: "Resume URL not found"
+            });
+        }
+
+        console.log("Resume URL:", resume.resumeURL);
+
+        // Redirect browser to Cloudinary file
         return res.redirect(resume.resumeURL);
 
     } catch (error) {
-        console.error("Download resume error:", error);
+        console.error("Download Resume Error:", error);
 
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
-            message: "Failed to download resume"
+            message: "Failed to download resume",
+            error: error.message
         });
     }
 };
+
+
 module.exports = {
     uploadResume,
     myResume,
     updateResume,
-    downloadResume,
+    downloadResume
 };
