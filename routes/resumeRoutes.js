@@ -2,38 +2,40 @@ const express = require("express");
 const router = express.Router();
 
 const protect = require("../middleware/authmiddleware");
-const upload = require ("../middleware/multer");
+const upload = require("../middleware/multer");
 
 const {
     uploadResume,
     myResume,
     updateResume,
-    downloadResume,
+    downloadResume
 } = require("../controller/resumeControl");
 
 
-// Public - Get active resume
+// Get active resume
 router.get("/resume", myResume);
 
 
-// Protected - Upload resume
+// Upload resume
 router.post(
-    "/upload",
+    "/resume/upload",
     protect,
     upload.single("resume"),
     uploadResume
 );
 
 
-// Protected - Update resume
+// Update resume
 router.put(
-    "/update",
+    "/resume/update",
     protect,
     upload.single("resume"),
     updateResume
 );
 
-router.get('/resume/download',downloadResume);
+
+// Download resume
+router.get("/resume/download", downloadResume);
 
 
 module.exports = router;
