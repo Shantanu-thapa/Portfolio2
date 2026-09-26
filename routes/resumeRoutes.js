@@ -33,7 +33,7 @@ router.put(
     updateResume
 );
 
-router.get('/download',downloadResume);
+router.get('/resume/download',downloadResume);
 
 
 module.exports = router;
