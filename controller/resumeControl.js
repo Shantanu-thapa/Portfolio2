@@ -1,10 +1,7 @@
 const Resume = require("../model/resumeModel");
 const cloudinary = require("../config/cloudinary");
-const axios = require("axios");
 
-// ==========================================
 // Upload Resume
-// ==========================================
 const uploadResume = async (req, res) => {
     try {
         if (!req.file) {
@@ -14,14 +11,11 @@ const uploadResume = async (req, res) => {
             });
         }
 
-        // Upload PDF to Cloudinary
         const result = await new Promise((resolve, reject) => {
             const stream = cloudinary.uploader.upload_stream(
                 {
                     folder: "portfolio/resume",
-                    resource_type: "raw",
-                    use_filename: true,
-                    unique_filename: true
+                    resource_type: "raw"
                 },
                 (error, result) => {
                     if (error) {
@@ -35,25 +29,21 @@ const uploadResume = async (req, res) => {
             stream.end(req.file.buffer);
         });
 
-        // Save resume in MongoDB
         const resume = await Resume.create({
             resumeURL: result.secure_url,
             publicId: result.public_id,
             fileName: req.file.originalname,
-            isActive: true,
-            downloadCount: 0
+            isActive: true
         });
 
-        return res.status(201).json({
+        res.status(201).json({
             success: true,
             message: "Resume uploaded successfully",
             resume
         });
 
     } catch (error) {
-        console.error("Upload Resume Error:", error);
-
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Resume upload failed",
             error: error.message
@@ -62,9 +52,7 @@ const uploadResume = async (req, res) => {
 };
 
 
-// ==========================================
 // Get Active Resume
-// ==========================================
 const myResume = async (req, res) => {
     try {
         const resume = await Resume.findOne({
@@ -78,16 +66,14 @@ const myResume = async (req, res) => {
             });
         }
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             message: "Resume found",
             resume
         });
 
     } catch (error) {
-        console.error("Get Resume Error:", error);
-
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Failed to fetch resume",
             error: error.message
@@ -96,9 +82,7 @@ const myResume = async (req, res) => {
 };
 
 
-// ==========================================
 // Update Resume
-// ==========================================
 const updateResume = async (req, res) => {
     try {
         if (!req.file) {
@@ -108,7 +92,6 @@ const updateResume = async (req, res) => {
             });
         }
 
-        // Find current active resume
         const oldResume = await Resume.findOne({
             isActive: true
         });
@@ -118,9 +101,7 @@ const updateResume = async (req, res) => {
             const stream = cloudinary.uploader.upload_stream(
                 {
                     folder: "portfolio/resume",
-                    resource_type: "raw",
-                    use_filename: true,
-                    unique_filename: true
+                    resource_type: "raw"
                 },
                 (error, result) => {
                     if (error) {
@@ -136,19 +117,12 @@ const updateResume = async (req, res) => {
 
         // Delete old Cloudinary file
         if (oldResume) {
-            try {
-                await cloudinary.uploader.destroy(
-                    oldResume.publicId,
-                    {
-                        resource_type: "raw"
-                    }
-                );
-            } catch (cloudinaryError) {
-                console.error(
-                    "Old Cloudinary file deletion failed:",
-                    cloudinaryError.message
-                );
-            }
+            await cloudinary.uploader.destroy(
+                oldResume.publicId,
+                {
+                    resource_type: "raw"
+                }
+            );
 
             oldResume.isActive = false;
             await oldResume.save();
@@ -159,20 +133,17 @@ const updateResume = async (req, res) => {
             resumeURL: result.secure_url,
             publicId: result.public_id,
             fileName: req.file.originalname,
-            isActive: true,
-            downloadCount: 0
+            isActive: true
         });
 
-        return res.status(200).json({
+        res.status(200).json({
             success: true,
             message: "Resume updated successfully",
             resume
         });
 
     } catch (error) {
-        console.error("Update Resume Error:", error);
-
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
             message: "Resume update failed",
             error: error.message
@@ -180,16 +151,14 @@ const updateResume = async (req, res) => {
     }
 };
 
-
-// ==========================================
-// Download Resume
-// ==========================================
 const downloadResume = async (req, res) => {
     try {
         const resume = await Resume.findOneAndUpdate(
             { isActive: true },
             { $inc: { downloadCount: 1 } },
-            { new: true }
+            {
+                new: true
+            }
         );
 
         if (!resume) {
@@ -199,55 +168,24 @@ const downloadResume = async (req, res) => {
             });
         }
 
-        if (!resume.resumeURL) {
-            return res.status(404).json({
-                success: false,
-                message: "Resume URL not found"
-            });
-        }
-
-        const cloudinaryResponse = await fetch(resume.resumeURL);
-
-        if (!cloudinaryResponse.ok) {
-            throw new Error("Failed to fetch resume from Cloudinary");
-        }
-
-        const pdfBuffer = Buffer.from(
-            await cloudinaryResponse.arrayBuffer()
-        );
-
-        res.setHeader("Content-Type", "application/pdf");
-
-        res.setHeader(
-            "Content-Disposition",
-            `attachment; filename="${resume.fileName || "resume.pdf"}"`
-        );
-
-        res.setHeader(
-            "Content-Length",
-            pdfBuffer.length
-        );
-
-        return res.send(pdfBuffer);
+        res.status(200).json({
+            success: true,
+            resumeURL: resume.resumeURL,
+            fileName: resume.fileName
+        });
 
     } catch (error) {
-        console.error("Download Resume Error:", error);
-
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
-            message: "Failed to download resume",
-            error: error.message
+            message: "Failed to download resume"
         });
     }
 };
 
 
-// ==========================================
-// Export Controllers
-// ==========================================
 module.exports = {
     uploadResume,
     myResume,
     updateResume,
-    downloadResume
+    downloadResume,
 };
