@@ -34,7 +34,7 @@ const uploadResume = async (req, res) => {
             stream.end(req.file.buffer);
         });
 
-        // Save resume information in MongoDB
+        // Save resume in MongoDB
         const resume = await Resume.create({
             resumeURL: result.secure_url,
             publicId: result.public_id,
@@ -133,7 +133,7 @@ const updateResume = async (req, res) => {
             stream.end(req.file.buffer);
         });
 
-        // Delete old Cloudinary resume
+        // Delete old Cloudinary file
         if (oldResume) {
             try {
                 await cloudinary.uploader.destroy(
@@ -213,10 +213,12 @@ const downloadResume = async (req, res) => {
             });
         }
 
-        console.log("Resume URL:", resume.resumeURL);
-
-        // Redirect browser to Cloudinary file
-        return res.redirect(resume.resumeURL);
+        // Return the Cloudinary URL to frontend
+        return res.status(200).json({
+            success: true,
+            resumeURL: resume.resumeURL,
+            fileName: resume.fileName
+        });
 
     } catch (error) {
         console.error("Download Resume Error:", error);
@@ -230,6 +232,9 @@ const downloadResume = async (req, res) => {
 };
 
 
+// ==========================================
+// Export Controllers
+// ==========================================
 module.exports = {
     uploadResume,
     myResume,
