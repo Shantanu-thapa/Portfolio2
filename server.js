@@ -23,7 +23,7 @@ const auth = require("./routes/authRoutes");
 const notify = require("./routes/notifyRoutes");
 
 app.use("/api/v1/projects", projects);
-app.use("/api/v1/resume", resumeHandle);
+app.use("/api/v1", resumeHandle);
 app.use ("/api/v1/auth", auth);
 //app.use("/api/v1/visitors", visitorCount);
 app.use("/api/v1/visitor", notify); 
