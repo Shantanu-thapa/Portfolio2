@@ -1,5 +1,6 @@
 const Resume = require("../model/resumeModel");
 const cloudinary = require("../config/cloudinary");
+const axios = require("axios");
 
 // ==========================================
 // Upload Resume
@@ -186,17 +187,9 @@ const updateResume = async (req, res) => {
 const downloadResume = async (req, res) => {
     try {
         const resume = await Resume.findOneAndUpdate(
-            {
-                isActive: true
-            },
-            {
-                $inc: {
-                    downloadCount: 1
-                }
-            },
-            {
-                new: true
-            }
+            { isActive: true },
+            { $inc: { downloadCount: 1 } },
+            { new: true }
         );
 
         if (!resume) {
@@ -213,12 +206,29 @@ const downloadResume = async (req, res) => {
             });
         }
 
-        // Return the Cloudinary URL to frontend
-        return res.status(200).json({
-            success: true,
-            resumeURL: resume.resumeURL,
-            fileName: resume.fileName
-        });
+        const cloudinaryResponse = await fetch(resume.resumeURL);
+
+        if (!cloudinaryResponse.ok) {
+            throw new Error("Failed to fetch resume from Cloudinary");
+        }
+
+        const pdfBuffer = Buffer.from(
+            await cloudinaryResponse.arrayBuffer()
+        );
+
+        res.setHeader("Content-Type", "application/pdf");
+
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${resume.fileName || "resume.pdf"}"`
+        );
+
+        res.setHeader(
+            "Content-Length",
+            pdfBuffer.length
+        );
+
+        return res.send(pdfBuffer);
 
     } catch (error) {
         console.error("Download Resume Error:", error);
