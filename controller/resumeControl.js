@@ -156,9 +156,7 @@ const downloadResume = async (req, res) => {
         const resume = await Resume.findOneAndUpdate(
             { isActive: true },
             { $inc: { downloadCount: 1 } },
-            {
-                new: true
-            }
+            { new: true }
         );
 
         if (!resume) {
@@ -168,20 +166,18 @@ const downloadResume = async (req, res) => {
             });
         }
 
-        res.status(200).json({
-            success: true,
-            resumeURL: resume.resumeURL,
-            fileName: resume.fileName
-        });
+        // Redirect directly to the resume file
+        return res.redirect(resume.resumeURL);
 
     } catch (error) {
+        console.error("Download resume error:", error);
+
         res.status(500).json({
             success: false,
             message: "Failed to download resume"
         });
     }
 };
-
 module.exports = {
     uploadResume,
     myResume,
