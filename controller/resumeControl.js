@@ -168,20 +168,26 @@ const downloadResume = async (req, res) => {
             });
         }
 
+        // Add .pdf extension to Cloudinary URL
+        const resumeURL = resume.resumeURL.endsWith(".pdf")
+            ? resume.resumeURL
+            : `${resume.resumeURL}.pdf`;
+
         res.status(200).json({
             success: true,
-            resumeURL: resume.resumeURL,
+            resumeURL: resumeURL,
             fileName: resume.fileName
         });
 
     } catch (error) {
+        console.error("Resume download error:", error);
+
         res.status(500).json({
             success: false,
             message: "Failed to download resume"
         });
     }
 };
-
 
 module.exports = {
     uploadResume,
