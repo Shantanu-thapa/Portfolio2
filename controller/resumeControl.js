@@ -157,7 +157,7 @@ const downloadResume = async (req, res) => {
             { isActive: true },
             { $inc: { downloadCount: 1 } },
             {
-                new: true
+                returnDocument: "after"
             }
         );
 
@@ -168,16 +168,22 @@ const downloadResume = async (req, res) => {
             });
         }
 
-        // Add .pdf extension to Cloudinary URL
-        const resumeURL = resume.resumeURL.endsWith(".pdf")
-            ? resume.resumeURL
-            : `${resume.resumeURL}.pdf`;
+        const response = await fetch(resume.resumeURL);
 
-        res.status(200).json({
-            success: true,
-            resumeURL: resumeURL,
-            fileName: resume.fileName
-        });
+        if (!response.ok) {
+            throw new Error("Failed to fetch resume from Cloudinary");
+        }
+
+        const pdfBuffer = Buffer.from(await response.arrayBuffer());
+
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${resume.fileName}"`
+        );
+        res.setHeader("Content-Length", pdfBuffer.length);
+
+        res.send(pdfBuffer);
 
     } catch (error) {
         console.error("Resume download error:", error);
