@@ -9,8 +9,6 @@
 
     "dev": "nodemon server.js",
 
-    "deploy": "wrangler deploy"
-
 
   },
 
